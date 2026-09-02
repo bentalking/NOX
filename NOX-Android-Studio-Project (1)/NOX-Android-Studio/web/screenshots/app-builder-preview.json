@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "NOX",
+      "hasCanvas": false,
+      "bodyTextLen": 532,
+      "bodyTextHash": "46abc808d64476ad32019985af05798102b895f5997ff6acc7f659382c3c6760",
+      "bodyTextPrefix": "DIENSTAG, 1. SEPTEMBER Gute Nacht, Athlet Auf den Startbildschir",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "NOX",
+      "hasCanvas": false,
+      "bodyTextLen": 532,
+      "bodyTextHash": "46abc808d64476ad32019985af05798102b895f5997ff6acc7f659382c3c6760",
+      "bodyTextPrefix": "DIENSTAG, 1. SEPTEMBER Gute Nacht, Athlet Auf den Startbildschir",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
