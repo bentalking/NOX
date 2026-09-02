@@ -16,11 +16,7 @@ function normalize(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-/**
- * NOX Local AI: privacy-first semantic layer around the local food database.
- * It deliberately does not call an API or upload text. The engine combines
- * quantity extraction, aliases, token matching and food context locally.
- */
+/** Local offline food matching against the built-in database. */
 export function analyzeFoodLocally(text: string): SmartFoodResult {
   const direct = parseFoodText(text);
   if (direct.length) {
@@ -32,7 +28,7 @@ export function analyzeFoodLocally(text: string): SmartFoodResult {
     return {
       items: direct,
       confidence,
-      explanation: "Mengen und Lebensmittel wurden direkt aus deiner Eingabe erkannt.",
+      explanation: "Mengen und Lebensmittel aus deiner Eingabe erkannt.",
       offline: true,
     };
   }
@@ -64,8 +60,8 @@ export function analyzeFoodLocally(text: string): SmartFoodResult {
     items,
     confidence: candidates.length ? Math.min(0.75, 0.35 + candidates[0].score * 0.08) : 0,
     explanation: candidates.length
-      ? "Ich habe lokale Treffer gefunden. Bitte prüfe die vorgeschlagene Portion vor dem Eintragen."
-      : "Kein sicherer Treffer in der lokalen Datenbank. Nutze einen manuellen Eintrag.",
+      ? "Mögliche Treffer aus der lokalen Liste. Portion bitte prüfen."
+      : "Kein Treffer. Bitte manuell eintragen oder die Suche nutzen.",
     offline: true,
   };
 }
@@ -76,12 +72,7 @@ export type PhotoInsight = {
   confidence: number;
 };
 
-/**
- * Stage 3 stays completely local: the image never leaves the device. This
- * lightweight vision assistant uses image statistics to propose likely food
- * categories and always asks the user to confirm. It is intentionally an
- * estimate, not a claim of exact calorie recognition.
- */
+/** Lightweight local image stats – never uploads. */
 export async function analyzeFoodPhoto(file: Blob): Promise<PhotoInsight[]> {
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
@@ -104,10 +95,10 @@ export async function analyzeFoodPhoto(file: Blob): Promise<PhotoInsight[]> {
   }
   const total = data.length / 4;
   const insights: PhotoInsight[] = [];
-  if (green / total > 0.08) insights.push({ label: "Gemüse / Salat", reason: "Viele grüne Bildbereiche erkannt", confidence: 0.62 });
-  if (yellow / total > 0.06) insights.push({ label: "Reis / Kartoffeln / Gebäck", reason: "Helle gelb-braune Bildbereiche erkannt", confidence: 0.54 });
-  if (red / total > 0.04) insights.push({ label: "Tomate / Paprika / Fleisch", reason: "Rote bzw. warme Bildbereiche erkannt", confidence: 0.48 });
-  if (dark / total > 0.18) insights.push({ label: "Gebratenes / dunkle Soße", reason: "Viele dunkle Bildbereiche erkannt", confidence: 0.42 });
-  if (!insights.length) insights.push({ label: "Mahlzeit", reason: "Foto lokal analysiert – bitte Lebensmittel selbst bestätigen", confidence: 0.25 });
+  if (green / total > 0.08) insights.push({ label: "Gemüse / Salat", reason: "Viele grüne Bildbereiche", confidence: 0.62 });
+  if (yellow / total > 0.06) insights.push({ label: "Reis / Kartoffeln / Gebäck", reason: "Helle gelb-braune Bereiche", confidence: 0.54 });
+  if (red / total > 0.04) insights.push({ label: "Tomate / Paprika / Fleisch", reason: "Rote bzw. warme Bereiche", confidence: 0.48 });
+  if (dark / total > 0.18) insights.push({ label: "Gebratenes / dunkle Soße", reason: "Viele dunkle Bereiche", confidence: 0.42 });
+  if (!insights.length) insights.push({ label: "Mahlzeit", reason: "Bitte Lebensmittel selbst eintragen", confidence: 0.25 });
   return insights.slice(0, 3);
 }
