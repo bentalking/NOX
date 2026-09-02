@@ -12,6 +12,18 @@ export const DEFAULT_PROFILE: Profile = {
   proteinGoal: 180,
   carbGoal: 250,
   fatGoal: 70,
+  accent: "blue",
+};
+
+export const ACCENT_PRESETS: Record<
+  Profile["accent"],
+  { primary: string; primaryFg: string; label: string }
+> = {
+  blue: { primary: "#3d8bfd", primaryFg: "#061018", label: "Blau" },
+  white: { primary: "#e8eef8", primaryFg: "#0a0e16", label: "Weiß" },
+  purple: { primary: "#a78bfa", primaryFg: "#12081f", label: "Lila" },
+  teal: { primary: "#2dd4bf", primaryFg: "#04201c", label: "Petrol" },
+  orange: { primary: "#fb923c", primaryFg: "#1a0c04", label: "Orange" },
 };
 
 function ex(

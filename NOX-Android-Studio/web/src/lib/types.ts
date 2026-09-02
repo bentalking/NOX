@@ -11,6 +11,13 @@ export type ActivityLevel =
 
 export type Goal = "cut" | "maintain" | "bulk";
 
+export type AccentColor =
+  | "blue"
+  | "white"
+  | "purple"
+  | "teal"
+  | "orange";
+
 export type Profile = {
   name: string;
   sex: Sex;
@@ -23,6 +30,7 @@ export type Profile = {
   proteinGoal: number;
   carbGoal: number;
   fatGoal: number;
+  accent: AccentColor;
 };
 
 export type Exercise = {

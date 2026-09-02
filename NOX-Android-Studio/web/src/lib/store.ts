@@ -50,13 +50,21 @@ function pruneLogs(logs: Record<string, DayLog>): Record<string, DayLog> {
   return next;
 }
 
+function migrateProfile(raw: Partial<Profile> | undefined): Profile {
+  return {
+    ...DEFAULT_PROFILE,
+    ...(raw ?? {}),
+    accent: raw?.accent ?? DEFAULT_PROFILE.accent,
+  };
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       profile: DEFAULT_PROFILE,
       plan: DEFAULT_PLAN,
       logs: {},
-      installDismissed: false,
+      installDismissed: true,
       updateProfile: (patch) =>
         set((s) => ({ profile: { ...s.profile, ...patch } })),
       setPlan: (plan) => set({ plan }),
@@ -194,8 +202,17 @@ export const useAppStore = create<AppState>()(
         profile: s.profile,
         plan: s.plan,
         logs: s.logs,
-        installDismissed: s.installDismissed,
+        installDismissed: true,
       }),
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<AppState>;
+        return {
+          ...current,
+          ...p,
+          profile: migrateProfile(p.profile),
+          installDismissed: true,
+        };
+      },
     },
   ),
 );
