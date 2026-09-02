@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.nox.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.nox.app'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            applicationIdSuffix '.debug'
+            versionNameSuffix '-debug'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+def webDir = file('../web')
+def webDist = file('../web/dist')
+def androidWeb = file('src/main/assets/web')
+
+tasks.register('prepareWeb', Exec) {
+    workingDir webDir
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine 'cmd', '/c', 'npm', 'install', '--no-audit', '--no-fund', '&&', 'npm', 'run', 'build'
+    } else {
+        commandLine 'sh', '-c', 'npm install --no-audit --no-fund && npm run build'
+    }
+}
+
+tasks.register('copyWeb', Sync) {
+    dependsOn 'prepareWeb'
+    from webDist
+    into androidWeb
+}
+
+tasks.named('preBuild') {
+    dependsOn 'copyWeb'
+}
