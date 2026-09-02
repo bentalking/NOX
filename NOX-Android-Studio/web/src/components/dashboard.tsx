@@ -1,6 +1,5 @@
 import { Check, ChevronRight, Dumbbell, Utensils } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { InstallBanner } from "@/components/install-banner";
 import { MacroRing } from "@/components/macro-ring";
 import { Button } from "@/components/ui/button";
 import { formatLongDate, greeting } from "@/lib/date";
@@ -52,8 +51,6 @@ export function Dashboard({ date, weekday }: Props) {
           {greeting()}, {profile.name}
         </h1>
       </header>
-
-      <InstallBanner />
 
       <section className="rounded-xl bg-surface px-4 py-5 shadow-[var(--shadow-border)]">
         <div className="flex items-end justify-between px-1">

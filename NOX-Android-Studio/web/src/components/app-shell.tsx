@@ -5,7 +5,9 @@ import { Dashboard } from "@/components/dashboard";
 import { FoodView } from "@/components/food-view";
 import { PlanView } from "@/components/plan-view";
 import { StatsView } from "@/components/stats-view";
+import { ACCENT_PRESETS } from "@/lib/defaults";
 import { msUntilMidnight, todayKey, weekdayOf } from "@/lib/date";
+import { useAppStore } from "@/lib/store";
 import type { TabId } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +20,7 @@ const TABS: { id: TabId; label: string; icon: typeof House }[] = [
 
 export function AppShell({ tab }: { tab: TabId }) {
   const [date, setDate] = useState(todayKey);
+  const accent = useAppStore((s) => s.profile.accent ?? "blue");
 
   useEffect(() => {
     const tick = () => setDate(todayKey());
@@ -33,6 +36,15 @@ export function AppShell({ tab }: { tab: TabId }) {
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [date]);
+
+  useEffect(() => {
+    const preset = ACCENT_PRESETS[accent] ?? ACCENT_PRESETS.blue;
+    document.documentElement.style.setProperty("--color-primary", preset.primary);
+    document.documentElement.style.setProperty(
+      "--color-primary-fg",
+      preset.primaryFg,
+    );
+  }, [accent]);
 
   const weekday = weekdayOf(date);
 
