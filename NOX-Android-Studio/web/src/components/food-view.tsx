@@ -1,4 +1,4 @@
-import { Brain, Camera, Check, ShieldCheck, X, Plus, Search, Trash2 } from "lucide-react";
+import { Camera, Check, Plus, Search, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QUICK_FOODS } from "@/lib/food-db";
 import { foodByName, parseFoodText, portionOf, searchFoods } from "@/lib/food-parser";
-import { analyzeFoodLocally, analyzeFoodPhoto, type PhotoInsight, type SmartFoodResult } from "@/lib/local-ai";
+import { analyzeFoodLocally, analyzeFoodPhoto, type PhotoInsight } from "@/lib/local-ai";
 import { remaining, sumFoods } from "@/lib/macros";
 import { useAppStore } from "@/lib/store";
 import type { FoodEntry } from "@/lib/types";
@@ -24,7 +24,16 @@ export function FoodView({ date }: Props) {
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [manualOpen, setManualOpen] = useState(false);
-  const [smart, setSmart] = useState<SmartFoodResult | null>(null);
+  const [pending, setPending] = useState<
+    {
+      name: string;
+      grams: number;
+      kcal: number;
+      protein: number;
+      carbs: number;
+      fat: number;
+    }[]
+  | null>(null);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoInsights, setPhotoInsights] = useState<PhotoInsight[]>([]);
@@ -67,14 +76,10 @@ export function FoodView({ date }: Props) {
         : `${items.length} Einträge hinzugefügt`,
     );
     setText("");
+    setPending(null);
   }
 
-  function addLocal() {
-    const items = parseFoodText(text);
-    commit(items, "local");
-  }
-
-  function addSmartLocal() {
+  function addFromText() {
     const value = text.trim();
     if (value.length < 2) {
       toast.error("Schreib zuerst, was du gegessen hast.");
@@ -82,11 +87,19 @@ export function FoodView({ date }: Props) {
     }
     setBusy(true);
     try {
-      const result = analyzeFoodLocally(value);
-      setSmart(result);
-      const items = result.items;
+      let items = parseFoodText(value);
       if (!items.length) {
-        toast.error("Nichts erkannt. Nutze ein Lebensmittel aus der Liste oder trage es manuell ein.");
+        const smart = analyzeFoodLocally(value);
+        items = smart.items;
+      }
+      if (!items.length) {
+        toast.error("Nichts erkannt. Nutze die Suche oder trage es manuell ein.");
+        return;
+      }
+      if (items.length === 1) {
+        commit(items, "local");
+      } else {
+        setPending(items);
       }
     } finally {
       setBusy(false);
@@ -132,41 +145,82 @@ export function FoodView({ date }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={addLocal} disabled={busy}>
+        <div className="mt-3">
+          <Button className="w-full" onClick={addFromText} disabled={busy}>
             <Plus className="size-4" />
-            Lokal
-          </Button>
-          <Button onClick={addSmartLocal} disabled={busy}>
-            <Plus className="size-4" />
-            {busy ? "Rechnet…" : "Schnell eintragen"}
+            {busy ? "Erkennt…" : "Eintragen"}
           </Button>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          Funktioniert vollständig lokal und offline. Mengen wie „200 g“ oder „2 Eier“ werden automatisch erkannt.
+          Mengen wie „200 g“ oder „2 Eier“ werden erkannt. Alles bleibt auf dem Gerät.
         </p>
       </section>
 
-      {smart ? (
+      {pending && pending.length > 0 ? (
         <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
-          <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary/15 text-primary"><Brain className="size-4" /></div>
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">NOX Local AI</p><p className="text-xs text-muted">{Math.round(smart.confidence * 100)}% Treffer · 100% auf diesem Gerät</p></div>
-            <button type="button" onClick={() => setSmart(null)} className="size-8 text-subtle" aria-label="KI-Ergebnis schließen"><X className="mx-auto size-4" /></button>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">Gefundene Lebensmittel</p>
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="size-8 text-subtle"
+              aria-label="Schließen"
+            >
+              <X className="mx-auto size-4" />
+            </button>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-muted">{smart.explanation}</p>
-          {smart.items.length ? <div className="mt-3 space-y-2">{smart.items.map((item, index) => <div key={`${item.name}-${index}`} className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2"><span className="text-sm">{item.name}</span><span className="text-xs text-muted">{fmt(item.grams, 0)} g · {fmt(item.kcal)} kcal</span></div>)}</div> : null}
-          {smart.items.length ? <Button className="mt-3 w-full" onClick={() => { commit(smart.items, "ai"); setSmart(null); }}><Check className="size-4" /> Übernehmen</Button> : null}
+          <div className="mt-3 space-y-2">
+            {pending.map((item, index) => (
+              <div
+                key={`${item.name}-${index}`}
+                className="flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2"
+              >
+                <span className="text-sm">{item.name}</span>
+                <span className="text-xs text-muted">
+                  {fmt(item.grams, 0)} g · {fmt(item.kcal)} kcal
+                </span>
+              </div>
+            ))}
+          </div>
+          <Button
+            className="mt-3 w-full"
+            onClick={() => commit(pending, "local")}
+          >
+            <Check className="size-4" /> Alles übernehmen
+          </Button>
         </section>
       ) : null}
 
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
-        <div className="flex items-center gap-2"><Camera className="size-4 text-primary" /><p className="text-sm font-semibold">Stufe 3 · Foto-Assistent</p></div>
-        <p className="mt-1 text-xs leading-relaxed text-muted">Foto bleibt auf deinem Gerät. NOX macht lokale Bildanalyse und zeigt Vorschläge – du bestätigst die Lebensmittel selbst.</p>
+        <div className="flex items-center gap-2">
+          <Camera className="size-4 text-primary" />
+          <p className="text-sm font-semibold">Foto</p>
+        </div>
+        <p className="mt-1 text-xs leading-relaxed text-muted">
+          Optional: Foto bleibt auf dem Gerät und gibt nur Vorschläge. Du bestätigst selbst.
+        </p>
         <div className="mt-3 flex gap-2">
           <label className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-fg">
             <Camera className="size-4" /> Foto aufnehmen
-            <input className="sr-only" type="file" accept="image/*" capture="environment" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setPhotoBusy(true); setPhotoOpen(true); setPhotoUrl(URL.createObjectURL(file)); try { setPhotoInsights(await analyzeFoodPhoto(file)); } finally { setPhotoBusy(false); } e.currentTarget.value = ""; }} />
+            <input
+              className="sr-only"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setPhotoBusy(true);
+                setPhotoOpen(true);
+                setPhotoUrl(URL.createObjectURL(file));
+                try {
+                  setPhotoInsights(await analyzeFoodPhoto(file));
+                } finally {
+                  setPhotoBusy(false);
+                }
+                e.currentTarget.value = "";
+              }}
+            />
           </label>
         </div>
       </section>
@@ -264,10 +318,63 @@ export function FoodView({ date }: Props) {
       {photoOpen ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-3 sm:items-center">
           <div className="w-full max-w-[32rem] overflow-hidden rounded-2xl bg-surface shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3"><div><p className="font-heading font-semibold">Foto lokal analysieren</p><p className="text-xs text-muted">Kein Upload · nur auf diesem Gerät</p></div><button onClick={() => { setPhotoOpen(false); if (photoUrl) URL.revokeObjectURL(photoUrl); setPhotoUrl(null); }} className="size-9 text-subtle"><X className="mx-auto size-5" /></button></div>
-            {photoUrl ? <img src={photoUrl} alt="Dein Essen" className="max-h-72 w-full object-cover" /> : null}
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div>
+                <p className="font-heading font-semibold">Foto-Vorschläge</p>
+                <p className="text-xs text-muted">Bleibt auf dem Gerät</p>
+              </div>
+              <button
+                onClick={() => {
+                  setPhotoOpen(false);
+                  if (photoUrl) URL.revokeObjectURL(photoUrl);
+                  setPhotoUrl(null);
+                }}
+                className="size-9 text-subtle"
+              >
+                <X className="mx-auto size-5" />
+              </button>
+            </div>
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt="Dein Essen"
+                className="max-h-72 w-full object-cover"
+              />
+            ) : null}
             <div className="p-4">
-              {photoBusy ? <p className="text-sm text-muted">Lokale Bildanalyse läuft…</p> : <><div className="flex items-center gap-2 text-xs text-ok"><ShieldCheck className="size-4" /> Bild wurde nicht hochgeladen.</div><div className="mt-3 space-y-2">{photoInsights.map((insight) => <button key={insight.label} type="button" onClick={() => { setText((t) => t ? `${t}, ${insight.label}` : insight.label); setPhotoOpen(false); }} className="flex w-full items-center justify-between rounded-lg bg-surface-2 px-3 py-3 text-left"><span><span className="block text-sm font-medium">{insight.label}</span><span className="text-xs text-muted">{insight.reason}</span></span><span className="text-xs text-muted">{Math.round(insight.confidence*100)}%</span></button>)}</div><p className="mt-3 text-[11px] leading-relaxed text-subtle">Foto-Erkennung ist eine Schätzung. Für genaue Kalorien bitte Portionen und Lebensmittel bestätigen.</p></>}
+              {photoBusy ? (
+                <p className="text-sm text-muted">Analysiert…</p>
+              ) : (
+                <>
+                  <div className="mt-1 space-y-2">
+                    {photoInsights.map((insight) => (
+                      <button
+                        key={insight.label}
+                        type="button"
+                        onClick={() => {
+                          setText((t) =>
+                            t ? `${t}, ${insight.label}` : insight.label,
+                          );
+                          setPhotoOpen(false);
+                        }}
+                        className="flex w-full items-center justify-between rounded-lg bg-surface-2 px-3 py-3 text-left"
+                      >
+                        <span>
+                          <span className="block text-sm font-medium">
+                            {insight.label}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {insight.reason}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-subtle">
+                    Nur Vorschläge – bitte Portion und Lebensmittel selbst prüfen.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

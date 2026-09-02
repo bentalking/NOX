@@ -3,9 +3,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { calcTdee, suggestedGoals } from "@/lib/defaults";
+import { ACCENT_PRESETS, calcTdee, suggestedGoals } from "@/lib/defaults";
 import { useAppStore } from "@/lib/store";
-import type { ActivityLevel, Goal, Sex } from "@/lib/types";
+import type { AccentColor, ActivityLevel, Goal, Sex } from "@/lib/types";
 import { fmt } from "@/lib/utils";
 
 type Props = { date: string };
@@ -23,6 +23,12 @@ const GOALS: { id: Goal; label: string }[] = [
   { id: "maintain", label: "Halten" },
   { id: "bulk", label: "Aufbau" },
 ];
+
+const ACCENTS = (Object.keys(ACCENT_PRESETS) as AccentColor[]).map((id) => ({
+  id,
+  label: ACCENT_PRESETS[id].label,
+  color: ACCENT_PRESETS[id].primary,
+}));
 
 export function StatsView({ date }: Props) {
   const profile = useAppStore((s) => s.profile);
@@ -111,6 +117,36 @@ export function StatsView({ date }: Props) {
               />
             </Field>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+        <h2 className="font-heading text-base font-semibold">Farbe</h2>
+        <p className="mt-1 text-xs text-muted">
+          Akzentfarbe der App – bleibt lokal gespeichert.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {ACCENTS.map((a) => {
+            const active = (profile.accent ?? "blue") === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => updateProfile({ accent: a.id })}
+                className={`flex h-10 items-center gap-2 rounded-full px-3 text-xs font-medium ${
+                  active
+                    ? "bg-primary text-primary-fg"
+                    : "bg-surface-2 text-muted"
+                }`}
+              >
+                <span
+                  className="size-3.5 rounded-full ring-1 ring-white/20"
+                  style={{ background: a.color }}
+                />
+                {a.label}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -212,8 +248,8 @@ export function StatsView({ date }: Props) {
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
         <h2 className="font-heading text-base font-semibold">Daten</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          Alles bleibt auf diesem Gerät. Kein Konto, kein Server für den Plan.
-          Essen und Sätze setzen sich jeden Tag um 0:00 zurück.
+          Alles bleibt auf diesem Gerät. Kein Konto, kein Server. Essen und Sätze
+          setzen sich jeden Tag um 0:00 zurück.
         </p>
         <Button
           className="mt-3"
