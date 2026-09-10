@@ -16,7 +16,9 @@ type AppState = {
   plan: WorkoutDay[];
   logs: Record<string, DayLog>;
   installDismissed: boolean;
+  deepseekKey: string;
   updateProfile: (patch: Partial<Profile>) => void;
+  setDeepseekKey: (key: string) => void;
   setPlan: (plan: WorkoutDay[]) => void;
   updateDay: (dayId: string, patch: Partial<WorkoutDay>) => void;
   addExercise: (dayId: string, exercise?: Partial<Exercise>) => void;
@@ -65,8 +67,10 @@ export const useAppStore = create<AppState>()(
       plan: DEFAULT_PLAN,
       logs: {},
       installDismissed: true,
+      deepseekKey: "",
       updateProfile: (patch) =>
         set((s) => ({ profile: { ...s.profile, ...patch } })),
+      setDeepseekKey: (key) => set({ deepseekKey: key }),
       setPlan: (plan) => set({ plan }),
       updateDay: (dayId, patch) =>
         set((s) => ({
@@ -203,6 +207,7 @@ export const useAppStore = create<AppState>()(
         plan: s.plan,
         logs: s.logs,
         installDismissed: true,
+        deepseekKey: s.deepseekKey,
       }),
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<AppState>;
@@ -211,6 +216,7 @@ export const useAppStore = create<AppState>()(
           ...p,
           profile: migrateProfile(p.profile),
           installDismissed: true,
+          deepseekKey: typeof p.deepseekKey === "string" ? p.deepseekKey : "",
         };
       },
     },
