@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { analyzeFoodWithDeepSeek } from "@/lib/food-ai";
 import { QUICK_FOODS } from "@/lib/food-db";
 import { foodByName, parseFoodText, portionOf, searchFoods } from "@/lib/food-parser";
 import { analyzeFoodLocally, analyzeFoodPhoto, type PhotoInsight } from "@/lib/local-ai";
@@ -17,6 +18,7 @@ type Props = { date: string };
 
 export function FoodView({ date }: Props) {
   const profile = useAppStore((s) => s.profile);
+  const deepseekKey = useAppStore((s) => s.deepseekKey);
   const log = useAppStore((s) => s.logs[date]);
   const addFood = useAppStore((s) => s.addFood);
   const removeFood = useAppStore((s) => s.removeFood);
@@ -34,6 +36,7 @@ export function FoodView({ date }: Props) {
       fat: number;
     }[]
   | null>(null);
+  const [pendingSource, setPendingSource] = useState<FoodEntry["source"]>("local");
   const [photoOpen, setPhotoOpen] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoInsights, setPhotoInsights] = useState<PhotoInsight[]>([]);
@@ -43,6 +46,7 @@ export function FoodView({ date }: Props) {
   const eaten = sumFoods(foods);
   const left = remaining(profile, eaten);
   const hits = useMemo(() => (query.trim() ? searchFoods(query, 6) : []), [query]);
+  const hasKey = Boolean(deepseekKey?.trim());
 
   function commit(
     items: {
@@ -79,7 +83,7 @@ export function FoodView({ date }: Props) {
     setPending(null);
   }
 
-  function addFromText() {
+  async function addFromText() {
     const value = text.trim();
     if (value.length < 2) {
       toast.error("Schreib zuerst, was du gegessen hast.");
@@ -88,17 +92,37 @@ export function FoodView({ date }: Props) {
     setBusy(true);
     try {
       let items = parseFoodText(value);
+      let source: FoodEntry["source"] = "local";
+
       if (!items.length) {
         const smart = analyzeFoodLocally(value);
         items = smart.items;
       }
+
+      if (!items.length && hasKey) {
+        try {
+          items = await analyzeFoodWithDeepSeek(value, deepseekKey);
+          source = "ai";
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Erkennung fehlgeschlagen";
+          toast.error(msg);
+          return;
+        }
+      }
+
       if (!items.length) {
-        toast.error("Nichts erkannt. Nutze die Suche oder trage es manuell ein.");
+        toast.error(
+          hasKey
+            ? "Nichts erkannt. Formuliere anders oder trag manuell ein."
+            : "Nichts in der Liste. Unter Werte einen DeepSeek-Key hinterlegen oder manuell eintragen.",
+        );
         return;
       }
+
       if (items.length === 1) {
-        commit(items, "local");
+        commit(items, source);
       } else {
+        setPendingSource(source);
         setPending(items);
       }
     } finally {
@@ -152,7 +176,9 @@ export function FoodView({ date }: Props) {
           </Button>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          Mengen wie „200 g“ oder „2 Eier“ werden erkannt. Alles bleibt auf dem Gerät.
+          {hasKey
+            ? "Zuerst lokale Liste, sonst Online-Erkennung. Mengen wie „200 g“ funktionieren."
+            : "Lokale Liste. Für freiere Texte: unter Werte einen DeepSeek-Key eintragen."}
         </p>
       </section>
 
@@ -184,7 +210,7 @@ export function FoodView({ date }: Props) {
           </div>
           <Button
             className="mt-3 w-full"
-            onClick={() => commit(pending, "local")}
+            onClick={() => commit(pending, pendingSource)}
           >
             <Check className="size-4" /> Alles übernehmen
           </Button>

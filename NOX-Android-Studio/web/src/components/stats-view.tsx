@@ -32,11 +32,14 @@ const ACCENTS = (Object.keys(ACCENT_PRESETS) as AccentColor[]).map((id) => ({
 
 export function StatsView({ date }: Props) {
   const profile = useAppStore((s) => s.profile);
+  const deepseekKey = useAppStore((s) => s.deepseekKey);
+  const setDeepseekKey = useAppStore((s) => s.setDeepseekKey);
   const updateProfile = useAppStore((s) => s.updateProfile);
   const logBodyWeight = useAppStore((s) => s.logBodyWeight);
   const resetToday = useAppStore((s) => s.resetToday);
   const logs = useAppStore((s) => s.logs);
   const [weight, setWeight] = useState(String(profile.weightKg));
+  const [keyDraft, setKeyDraft] = useState(deepseekKey);
 
   const tdee = calcTdee(profile);
   const suggested = suggestedGoals(profile);
@@ -147,6 +150,55 @@ export function StatsView({ date }: Props) {
               </button>
             );
           })}
+        </div>
+      </section>
+
+      <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
+        <h2 className="font-heading text-base font-semibold">Essen-Erkennung</h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted">
+          Optional: DeepSeek-API-Key für freie Texte (z. B. „Teller Nudeln mit
+          Bolognese“). Key bleibt nur auf diesem Gerät. Ohne Key läuft alles
+          offline über die lokale Liste.
+        </p>
+        <div className="mt-3 flex flex-col gap-2">
+          <Field label="DeepSeek API-Key">
+            <Input
+              type="password"
+              autoComplete="off"
+              placeholder="sk-…"
+              value={keyDraft}
+              onChange={(e) => setKeyDraft(e.target.value)}
+            />
+          </Field>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setDeepseekKey(keyDraft.trim());
+                toast.success(
+                  keyDraft.trim() ? "Key gespeichert." : "Key entfernt.",
+                );
+              }}
+            >
+              Speichern
+            </Button>
+            {deepseekKey ? (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setKeyDraft("");
+                  setDeepseekKey("");
+                  toast.success("Key gelöscht.");
+                }}
+              >
+                Löschen
+              </Button>
+            ) : null}
+          </div>
+          <p className="text-[11px] leading-relaxed text-subtle">
+            Key holen: platform.deepseek.com → API Keys. Sehr günstig, nur bei
+            unbekannter Eingabe wird online angefragt.
+          </p>
         </div>
       </section>
 
