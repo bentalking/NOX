@@ -12,14 +12,14 @@
   --color-fg: #e8eef8;
   --color-muted: #8b97ad;
   --color-subtle: #5c6b84;
-  --color-primary: #3d8bfd;
-  --color-primary-fg: #061018;
-  --color-accent: #7eb6ff;
+  --color-primary: #e8eef8;
+  --color-primary-fg: #0a0e16;
+  --color-accent: #c8d0e0;
   --color-border: #1e2a40;
   --color-ok: #3ee0a0;
   --color-warn: #e8b84a;
   --color-danger: #f07178;
-  --color-glow: #132038;
+  --color-glow: #1a2030;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -48,11 +48,13 @@
     min-height: 100dvh;
     background-color: var(--color-bg);
     background-image:
-      radial-gradient(ellipse 90% 55% at 50% -18%, var(--color-glow) 0%, transparent 62%),
-      radial-gradient(ellipse 50% 40% at 100% 100%, color-mix(in oklab, var(--color-primary) 12%, transparent) 0%, transparent 55%);
+      radial-gradient(ellipse 100% 60% at 50% -20%, var(--color-glow) 0%, transparent 65%),
+      radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 35% at 0% 80%, color-mix(in oklab, var(--color-primary) 8%, transparent) 0%, transparent 50%);
+    background-attachment: fixed;
     color: var(--color-fg);
     font-family: var(--font-sans);
-    transition: background-color 0.25s ease, color 0.25s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1,
