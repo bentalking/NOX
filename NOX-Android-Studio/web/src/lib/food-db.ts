@@ -1,1 +1,37 @@
-PLACEHOLDER
+import type { FoodItem } from "@/lib/types";
+
+export const FOOD_DB: FoodItem[] = [
+  { name: "Hähnchenbrust", aliases: ["haehnchenbrust","huhnbrust","huhn","chicken","haehnchen","hähnchen","chicken breast"], kcal: 165, protein: 31, carbs: 0, fat: 3.6 },
+  { name: "Kinder Bueno", aliases: ["bueno", "kinder bueno", "bueno classic"], kcal: 566, protein: 9.3, carbs: 49.6, fat: 37.2, pieceGrams: 43 },
+  { name: "Kinder Bueno White", aliases: ["bueno white", "kinder bueno white", "bueno weiss", "bueno weiß", "bueno weisse"], kcal: 568, protein: 8.8, carbs: 50.5, fat: 36.8, pieceGrams: 39 },
+  { name: "Pringles Original", aliases: ["pringles", "pringles original", "pringel", "pringles dose"], kcal: 526, protein: 4, carbs: 49, fat: 34, pieceGrams: 30 },
+  { name: "Pringles Sour Cream", aliases: ["pringles sour cream", "pringles zwiebel"], kcal: 520, protein: 4.2, carbs: 50, fat: 33, pieceGrams: 30 },
+  { name: "Pringles Paprika", aliases: ["pringles paprika"], kcal: 520, protein: 4, carbs: 51, fat: 32, pieceGrams: 30 },
+  { name: "Pringles Salt & Vinegar", aliases: ["pringles salt vinegar", "pringles essig"], kcal: 510, protein: 4, carbs: 52, fat: 31, pieceGrams: 30 },
+  { name: "Eiklar", aliases: ["eiweiß", "eiweiss", "eiklar", "eiweiss pur"], kcal: 52, protein: 11, carbs: 0.7, fat: 0.2 },
+  { name: "Hähnchenschenkel", aliases: ["haehnchenschenkel","huhnschenkel","chicken thigh"], kcal: 185, protein: 22, carbs: 0, fat: 11 },
+  { name: "Putenbrust", aliases: ["pute","truthahn","turkey","putenfilet"], kcal: 135, protein: 29, carbs: 0, fat: 1.5 },
+  { name: "Rinderhack", aliases: ["hackfleisch","hack","ground beef"], kcal: 250, protein: 26, carbs: 0, fat: 16 },
+  { name: "Ei", aliases: ["eier","egg","eggs"], kcal: 155, protein: 13, carbs: 1.1, fat: 11, pieceGrams: 60 },
+  { name: "Magerquark", aliases: ["quark","magerquark 0%"], kcal: 67, protein: 12, carbs: 4, fat: 0.3 },
+  { name: "Skyr", aliases: ["skyr nature"], kcal: 63, protein: 11, carbs: 4, fat: 0.2 },
+  { name: "Haferflocken", aliases: ["hafer","oats","oatmeal"], kcal: 370, protein: 13, carbs: 60, fat: 7 },
+  { name: "Reis gekocht", aliases: ["reis","rice"], kcal: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+  { name: "Vollkornbrot", aliases: ["vollkorn","brot"], kcal: 250, protein: 8, carbs: 45, fat: 3.5, pieceGrams: 50 },
+  { name: "Banane", aliases: ["banana"], kcal: 89, protein: 1.1, carbs: 23, fat: 0.3, pieceGrams: 120 },
+  { name: "Proteinpulver", aliases: ["whey","proteinshake","eiweißpulver"], kcal: 380, protein: 80, carbs: 6, fat: 5, pieceGrams: 30 },
+  { name: "Lachs", aliases: ["salmon"], kcal: 208, protein: 20, carbs: 0, fat: 13 },
+  { name: "Brokkoli", aliases: ["broccoli"], kcal: 34, protein: 2.8, carbs: 7, fat: 0.4 },
+  { name: "Joghurt 1,5%", aliases: ["joghurt","yogurt"], kcal: 50, protein: 4.5, carbs: 5, fat: 1.5 },
+  { name: "Snickers", aliases: ["snickers riegel"], kcal: 488, protein: 8.6, carbs: 57, fat: 24, pieceGrams: 50 },
+  { name: "Mars", aliases: ["mars riegel"], kcal: 448, protein: 4.1, carbs: 68, fat: 16, pieceGrams: 51 },
+  { name: "Twix", aliases: ["twix riegel"], kcal: 497, protein: 4.5, carbs: 65, fat: 24, pieceGrams: 50 },
+  { name: "Haribo Goldbären", aliases: ["haribo","gummibärchen","goldbären"], kcal: 343, protein: 6.9, carbs: 77, fat: 0.2, pieceGrams: 25 },
+  { name: "Lay's Chips", aliases: ["lays","chips","kartoffelchips"], kcal: 536, protein: 6.5, carbs: 50, fat: 34 },
+  { name: "Milka Alpenmilch", aliases: ["milka"], kcal: 530, protein: 6.3, carbs: 59, fat: 30, pieceGrams: 20 },
+  { name: "McDonalds Big Mac", aliases: ["big mac"], kcal: 257, protein: 12, carbs: 21, fat: 14, pieceGrams: 220 },
+  { name: "Döner Box", aliases: ["doener box","döner box"], kcal: 220, protein: 14, carbs: 22, fat: 9 },
+  { name: "Pizza Salami", aliases: ["salami pizza"], kcal: 270, protein: 12, carbs: 28, fat: 12 },
+];
+
+export const FOOD_DB_COUNT = FOOD_DB.length;
