@@ -54,17 +54,30 @@ export function StatsView({ date }: Props) {
     .slice(0, 8);
 
   function doExport() {
-    const data = exportBackup();
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `nox-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Backup exportiert");
+    try {
+      const data = exportBackup();
+      const json = JSON.stringify(data, null, 2);
+      const filename = `nox-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      const dataUrl =
+        "data:application/json;charset=utf-8," + encodeURIComponent(json);
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      if (navigator.clipboard?.writeText) {
+        void navigator.clipboard.writeText(json).then(
+          () => toast.success("Backup exportiert (auch in Zwischenablage)"),
+          () => toast.success("Backup exportiert"),
+        );
+      } else {
+        toast.success("Backup exportiert – siehe Downloads");
+      }
+    } catch {
+      toast.error("Export fehlgeschlagen");
+    }
   }
 
   async function doImport(file: File) {
@@ -75,10 +88,14 @@ export function StatsView({ date }: Props) {
         toast.error("Ungültige Backup-Datei");
         return;
       }
+      if (!data.profile || !Array.isArray(data.plan)) {
+        toast.error("Backup unvollständig");
+        return;
+      }
       importBackup(data, { includeKey: false });
       toast.success("Backup importiert");
     } catch {
-      toast.error("Import fehlgeschlagen");
+      toast.error("Import fehlgeschlagen – JSON prüfen");
     }
   }
 
@@ -304,7 +321,8 @@ export function StatsView({ date }: Props) {
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
         <h2 className="font-heading text-base font-semibold">Backup</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          Plan, Vorlagen, Logs und Profil als JSON. Key wird nicht mit exportiert.
+          Plan, Vorlagen, Logs und Profil. Export landet in Downloads und in der
+          Zwischenablage. Import: JSON-Datei wählen.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="secondary" onClick={doExport}>
@@ -316,7 +334,7 @@ export function StatsView({ date }: Props) {
           <input
             ref={fileRef}
             type="file"
-            accept="application/json,.json"
+            accept="application/json,.json,text/plain"
             className="sr-only"
             onChange={(e) => {
               const f = e.target.files?.[0];
