@@ -2,9 +2,13 @@ package com.nox.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -18,7 +22,9 @@ import android.util.Log;
 public class MainActivity extends Activity {
     private WebView webView;
     private static final int CAMERA_REQUEST = 42;
+    private static final int FILE_CHOOSER_REQUEST = 43;
     private static final String TAG = "NOX";
+    private ValueCallback<Uri[]> filePathCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +89,54 @@ public class MainActivity extends Activity {
                     }
                 });
             }
+
+            @Override
+            public boolean onShowFileChooser(
+                    WebView webView,
+                    ValueCallback<Uri[]> filePathCallback,
+                    FileChooserParams fileChooserParams
+            ) {
+                if (MainActivity.this.filePathCallback != null) {
+                    MainActivity.this.filePathCallback.onReceiveValue(null);
+                }
+                MainActivity.this.filePathCallback = filePathCallback;
+
+                Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                Intent pickGallery = new Intent(Intent.ACTION_GET_CONTENT);
+                pickGallery.addCategory(Intent.CATEGORY_OPENABLE);
+                pickGallery.setType("image/*");
+
+                Intent chooser = Intent.createChooser(pickGallery, "Foto wählen");
+                chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{takePicture});
+
+                try {
+                    startActivityForResult(chooser, FILE_CHOOSER_REQUEST);
+                } catch (Exception e) {
+                    MainActivity.this.filePathCallback = null;
+                    Log.e(TAG, "File chooser failed", e);
+                    return false;
+                }
+                return true;
+            }
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != FILE_CHOOSER_REQUEST || filePathCallback == null) {
+            return;
+        }
+        Uri[] results = null;
+        if (resultCode == Activity.RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                results = new Uri[]{data.getData()};
+            } else if (data != null && data.getClipData() != null && data.getClipData().getItemCount() > 0) {
+                results = new Uri[]{data.getClipData().getItemAt(0).getUri()};
+            }
+        }
+        filePathCallback.onReceiveValue(results);
+        filePathCallback = null;
     }
 
     @Override
