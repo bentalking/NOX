@@ -5,7 +5,7 @@ import { Dashboard } from "@/components/dashboard";
 import { FoodView } from "@/components/food-view";
 import { PlanView } from "@/components/plan-view";
 import { StatsView } from "@/components/stats-view";
-import { ACCENT_PRESETS } from "@/lib/defaults";
+import { ACCENT_PRESETS, THEME_PRESETS } from "@/lib/defaults";
 import { msUntilMidnight, todayKey, weekdayOf } from "@/lib/date";
 import { useAppStore } from "@/lib/store";
 import type { TabId } from "@/lib/types";
@@ -21,6 +21,7 @@ const TABS: { id: TabId; label: string; icon: typeof House }[] = [
 export function AppShell({ tab }: { tab: TabId }) {
   const [date, setDate] = useState(todayKey);
   const accent = useAppStore((s) => s.profile.accent ?? "blue");
+  const theme = useAppStore((s) => s.profile.theme ?? "dark");
 
   useEffect(() => {
     const tick = () => setDate(todayKey());
@@ -39,12 +40,22 @@ export function AppShell({ tab }: { tab: TabId }) {
 
   useEffect(() => {
     const preset = ACCENT_PRESETS[accent] ?? ACCENT_PRESETS.blue;
-    document.documentElement.style.setProperty("--color-primary", preset.primary);
-    document.documentElement.style.setProperty(
-      "--color-primary-fg",
-      preset.primaryFg,
-    );
-  }, [accent]);
+    const t = THEME_PRESETS[theme] ?? THEME_PRESETS.dark;
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    root.style.setProperty("--color-primary", preset.primary);
+    root.style.setProperty("--color-primary-fg", preset.primaryFg);
+    root.style.setProperty("--color-glow", preset.glow);
+    root.style.setProperty("--color-bg", t.bg);
+    root.style.setProperty("--color-surface", t.surface);
+    root.style.setProperty("--color-surface-2", t.surface2);
+    root.style.setProperty("--color-fg", t.fg);
+    root.style.setProperty("--color-muted", t.muted);
+    root.style.setProperty("--color-subtle", t.subtle);
+    root.style.setProperty("--color-border", t.border);
+    root.style.setProperty("--shadow-border", t.shadow);
+    root.style.setProperty("--shadow-border-hover", t.shadowHover);
+  }, [accent, theme]);
 
   const weekday = weekdayOf(date);
 

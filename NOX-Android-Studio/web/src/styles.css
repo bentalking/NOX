@@ -19,6 +19,7 @@
   --color-ok: #3ee0a0;
   --color-warn: #e8b84a;
   --color-danger: #f07178;
+  --color-glow: #132038;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -36,18 +37,22 @@
     -moz-osx-font-smoothing: grayscale;
     background: var(--color-bg);
     color: var(--color-fg);
+    color-scheme: dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
   }
 
   body {
     min-height: 100dvh;
     background-color: var(--color-bg);
-    background-image: radial-gradient(
-      ellipse 90% 55% at 50% -18%,
-      #132038 0%,
-      transparent 62%
-    );
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -18%, var(--color-glow) 0%, transparent 62%),
+      radial-gradient(ellipse 50% 40% at 100% 100%, color-mix(in oklab, var(--color-primary) 12%, transparent) 0%, transparent 55%);
     color: var(--color-fg);
     font-family: var(--font-sans);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   h1,
