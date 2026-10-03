@@ -1,11 +1,12 @@
 import { FOOD_DB } from "@/lib/food-db";
 import { parseFoodText, type ParsedFood } from "@/lib/food-parser";
+import { searchOpenFoodFacts } from "@/lib/open-food-facts";
 
 export type SmartFoodResult = {
   items: ParsedFood[];
   confidence: number;
   explanation: string;
-  offline: true;
+  offline: boolean;
 };
 
 const STOPWORDS = new Set([
@@ -85,7 +86,39 @@ export function analyzeFoodLocally(text: string): SmartFoodResult {
       : 0,
     explanation: candidates.length
       ? "Lokale Treffer aus der NOX-DB – Portion bitte prüfen."
-      : "Kein Treffer offline. Manuell oder online (Open Food Facts) versuchen.",
+      : "Kein Treffer offline. Online (Open Food Facts) wird versucht…",
+    offline: true,
+  };
+}
+
+/** Smart: 1) offline DB  2) Open Food Facts (free, no key) */
+export async function analyzeFoodSmart(text: string): Promise<SmartFoodResult> {
+  const local = analyzeFoodLocally(text);
+  if (local.items.length && local.confidence >= 0.7) {
+    return local;
+  }
+
+  try {
+    const off = await searchOpenFoodFacts(text, 6);
+    if (off.length) {
+      return {
+        items: off,
+        confidence: 0.75,
+        explanation: "Open Food Facts – weltweite Produktdatenbank (online).",
+        offline: false,
+      };
+    }
+  } catch {
+    /* network offline */
+  }
+
+  if (local.items.length) return local;
+
+  return {
+    items: [],
+    confidence: 0,
+    explanation:
+      "Nichts gefunden. Tipp: genauer schreiben (z.B. „200g Hähnchenbrust“) oder manuell eintragen.",
     offline: true,
   };
 }
@@ -96,7 +129,6 @@ export type PhotoInsight = {
   confidence: number;
 };
 
-/** Lightweight local image stats – never uploads. */
 export async function analyzeFoodPhoto(file: Blob): Promise<PhotoInsight[]> {
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement("canvas");
