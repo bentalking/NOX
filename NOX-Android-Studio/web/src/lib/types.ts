@@ -11,12 +11,17 @@ export type ActivityLevel =
 
 export type Goal = "cut" | "maintain" | "bulk";
 
+export type ThemeMode = "dark" | "light";
+
 export type AccentColor =
   | "blue"
   | "white"
   | "purple"
   | "teal"
-  | "orange";
+  | "orange"
+  | "rose"
+  | "lime"
+  | "cyan";
 
 export type Profile = {
   name: string;
@@ -31,6 +36,7 @@ export type Profile = {
   carbGoal: number;
   fatGoal: number;
   accent: AccentColor;
+  theme: ThemeMode;
 };
 
 export type Exercise = {
@@ -48,6 +54,13 @@ export type WorkoutDay = {
   name: string;
   rest: boolean;
   exercises: Exercise[];
+};
+
+export type DayTemplate = {
+  id: string;
+  name: string;
+  exercises: Exercise[];
+  createdAt: number;
 };
 
 export type FoodEntry = {
@@ -78,4 +91,14 @@ export type FoodItem = {
   carbs: number;
   fat: number;
   pieceGrams?: number;
+};
+
+export type NoxBackup = {
+  version: 1;
+  exportedAt: string;
+  profile: Profile;
+  plan: WorkoutDay[];
+  logs: Record<string, DayLog>;
+  dayTemplates: DayTemplate[];
+  deepseekKey?: string;
 };
