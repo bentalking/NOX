@@ -12,7 +12,7 @@ export const DEFAULT_PROFILE: Profile = {
   proteinGoal: 180,
   carbGoal: 250,
   fatGoal: 70,
-  accent: "blue",
+  accent: "white",
   theme: "dark",
 };
 
