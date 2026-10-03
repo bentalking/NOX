@@ -48,13 +48,33 @@
     min-height: 100dvh;
     background-color: var(--color-bg);
     background-image:
-      radial-gradient(ellipse 100% 60% at 50% -20%, var(--color-glow) 0%, transparent 65%),
-      radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0%, transparent 55%),
-      radial-gradient(ellipse 40% 35% at 0% 80%, color-mix(in oklab, var(--color-primary) 8%, transparent) 0%, transparent 50%);
+      radial-gradient(ellipse 110% 70% at 50% -25%, var(--color-glow) 0%, transparent 68%),
+      radial-gradient(ellipse 50% 45% at 105% 105%, color-mix(in oklab, var(--color-primary) 18%, transparent) 0%, transparent 58%),
+      radial-gradient(ellipse 45% 40% at -5% 90%, color-mix(in oklab, var(--color-primary) 12%, transparent) 0%, transparent 55%),
+      radial-gradient(ellipse 30% 25% at 85% 15%, color-mix(in oklab, var(--color-primary) 8%, transparent) 0%, transparent 50%),
+      radial-gradient(circle at 20% 40%, color-mix(in oklab, var(--color-primary) 5%, transparent) 0%, transparent 35%);
     background-attachment: fixed;
     color: var(--color-fg);
     font-family: var(--font-sans);
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition: background-color 0.35s ease, color 0.35s ease;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.45;
+    background-image:
+      radial-gradient(circle at 12% 18%, color-mix(in oklab, var(--color-primary) 14%, transparent) 0%, transparent 28%),
+      radial-gradient(circle at 88% 72%, color-mix(in oklab, var(--color-primary) 10%, transparent) 0%, transparent 32%),
+      radial-gradient(circle at 70% 8%, color-mix(in oklab, var(--color-primary) 7%, transparent) 0%, transparent 22%);
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
   }
 
   h1,
