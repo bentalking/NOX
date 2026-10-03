@@ -114,7 +114,6 @@ function parseQty(raw: string): { qty: Qty; rest: string } {
   return { qty: {}, rest: text };
 }
 
-/** Score food match – longer / exact names win; short generic tokens alone never win. */
 function scoreItem(query: string, item: FoodItem): number {
   const q = fold(query);
   if (!q) return 0;
@@ -127,12 +126,10 @@ function scoreItem(query: string, item: FoodItem): number {
       best = Math.max(best, 250 + n.length);
       continue;
     }
-    // full alias contained in query (e.g. "bueno white" in "1x bueno white")
     if (n.length >= 4 && q.includes(n)) {
       best = Math.max(best, 150 + n.length * 2);
       continue;
     }
-    // query is prefix of long name
     if (q.length >= 4 && n.startsWith(q)) {
       best = Math.max(best, 90 + q.length);
       continue;
@@ -150,12 +147,10 @@ function scoreItem(query: string, item: FoodItem): number {
         softTok += 1;
       }
     }
-    // multi-word query needs at least 2 token matches (prevents "egg white" → Bueno White)
     if (qTokens.length >= 2) {
       if (exactTok < 2 && !(exactTok >= 1 && softTok >= 1)) continue;
-      best = Math.max(best, 50 + exactTok * 35 + softTok * 15 + n.length);
+      best = Math.max(best, 50 + exactTok * 40 + softTok * 15 + n.length);
     } else {
-      // single token: only exact token match and token length >= 4
       const qt = qTokens[0] ?? "";
       if (qt.length >= 4 && nTokens.some((nt) => nt === qt)) {
         best = Math.max(best, 60 + qt.length);
@@ -176,7 +171,6 @@ function findItem(query: string): FoodItem | null {
       bestScore = s;
       best = item;
     } else if (s === bestScore && best && s > 0) {
-      // prefer longer name on tie
       if (item.name.length > best.name.length) best = item;
     }
   }
@@ -187,11 +181,26 @@ function parseSegment(segment: string): ParsedFood | null {
   const { qty, rest } = parseQty(segment);
   const item = findItem(rest) ?? findItem(fold(segment));
   if (!item) return null;
-  let grams = 100;
-  if (qty.grams && qty.grams > 0) grams = qty.grams;
-  else if (qty.pieces && item.pieceGrams) grams = qty.pieces * item.pieceGrams;
-  else if (qty.pieces) grams = qty.pieces * (item.pieceGrams ?? 100);
-  else if (item.pieceGrams && !/\d/.test(segment)) grams = item.pieceGrams;
+
+  // Menge NUR aus dem Text oder pieceGrams – NIE stillschweigend 100g
+  let grams: number | null = null;
+  if (qty.grams && qty.grams > 0) {
+    grams = qty.grams;
+  } else if (qty.pieces && qty.pieces > 0) {
+    grams = qty.pieces * (item.pieceGrams ?? 50);
+  } else if (item.pieceGrams && item.pieceGrams > 0 && !/\d/.test(segment)) {
+    grams = item.pieceGrams;
+  }
+  if (grams == null || grams <= 0) {
+    return {
+      name: item.name,
+      grams: 0,
+      kcal: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    };
+  }
   return macrosFor(item, grams);
 }
 
