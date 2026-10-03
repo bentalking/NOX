@@ -9,6 +9,7 @@ import type {
   FoodEntry,
   NoxBackup,
   Profile,
+  SavedBackup,
   WorkoutDay,
 } from "@/lib/types";
 import { uid } from "@/lib/utils";
@@ -18,6 +19,7 @@ type AppState = {
   plan: WorkoutDay[];
   logs: Record<string, DayLog>;
   dayTemplates: DayTemplate[];
+  savedBackups: SavedBackup[];
   installDismissed: boolean;
   deepseekKey: string;
   updateProfile: (patch: Partial<Profile>) => void;
@@ -25,11 +27,7 @@ type AppState = {
   setPlan: (plan: WorkoutDay[]) => void;
   updateDay: (dayId: string, patch: Partial<WorkoutDay>) => void;
   addExercise: (dayId: string, exercise?: Partial<Exercise>) => void;
-  updateExercise: (
-    dayId: string,
-    exerciseId: string,
-    patch: Partial<Exercise>,
-  ) => void;
+  updateExercise: (dayId: string, exerciseId: string, patch: Partial<Exercise>) => void;
   removeExercise: (dayId: string, exerciseId: string) => void;
   ensureLog: (date: string) => DayLog;
   addFood: (date: string, food: Omit<FoodEntry, "id" | "createdAt">) => void;
@@ -45,6 +43,10 @@ type AppState = {
   copyDayToDay: (fromDayId: string, toDayId: string) => void;
   exportBackup: () => NoxBackup;
   importBackup: (data: NoxBackup, opts?: { includeKey?: boolean }) => void;
+  saveNamedBackup: (name: string) => void;
+  restoreNamedBackup: (id: string) => void;
+  removeNamedBackup: (id: string) => void;
+  renameNamedBackup: (id: string, name: string) => void;
 };
 
 function emptyLog(date: string): DayLog {
@@ -71,10 +73,7 @@ function migrateProfile(raw: Partial<Profile> | undefined): Profile {
 }
 
 function cloneExercises(exercises: Exercise[]): Exercise[] {
-  return exercises.map((e) => ({
-    ...e,
-    id: uid("ex"),
-  }));
+  return exercises.map((e) => ({ ...e, id: uid("ex") }));
 }
 
 export const useAppStore = create<AppState>()(
@@ -84,16 +83,14 @@ export const useAppStore = create<AppState>()(
       plan: DEFAULT_PLAN,
       logs: {},
       dayTemplates: [],
+      savedBackups: [],
       installDismissed: true,
       deepseekKey: "",
-      updateProfile: (patch) =>
-        set((s) => ({ profile: { ...s.profile, ...patch } })),
+      updateProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
       setDeepseekKey: (key) => set({ deepseekKey: key }),
       setPlan: (plan) => set({ plan }),
       updateDay: (dayId, patch) =>
-        set((s) => ({
-          plan: s.plan.map((d) => (d.id === dayId ? { ...d, ...patch } : d)),
-        })),
+        set((s) => ({ plan: s.plan.map((d) => (d.id === dayId ? { ...d, ...patch } : d)) })),
       addExercise: (dayId, exercise) =>
         set((s) => ({
           plan: s.plan.map((d) =>
@@ -120,24 +117,14 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           plan: s.plan.map((d) =>
             d.id === dayId
-              ? {
-                  ...d,
-                  exercises: d.exercises.map((e) =>
-                    e.id === exerciseId ? { ...e, ...patch } : e,
-                  ),
-                }
+              ? { ...d, exercises: d.exercises.map((e) => (e.id === exerciseId ? { ...e, ...patch } : e)) }
               : d,
           ),
         })),
       removeExercise: (dayId, exerciseId) =>
         set((s) => ({
           plan: s.plan.map((d) =>
-            d.id === dayId
-              ? {
-                  ...d,
-                  exercises: d.exercises.filter((e) => e.id !== exerciseId),
-                }
-              : d,
+            d.id === dayId ? { ...d, exercises: d.exercises.filter((e) => e.id !== exerciseId) } : d,
           ),
         })),
       ensureLog: (date) => {
@@ -150,31 +137,14 @@ export const useAppStore = create<AppState>()(
       addFood: (date, food) =>
         set((s) => {
           const log = s.logs[date] ?? emptyLog(date);
-          const entry: FoodEntry = {
-            ...food,
-            id: uid("food"),
-            createdAt: Date.now(),
-          };
-          return {
-            logs: pruneLogs({
-              ...s.logs,
-              [date]: { ...log, foods: [entry, ...log.foods] },
-            }),
-          };
+          const entry: FoodEntry = { ...food, id: uid("food"), createdAt: Date.now() };
+          return { logs: pruneLogs({ ...s.logs, [date]: { ...log, foods: [entry, ...log.foods] } }) };
         }),
       removeFood: (date, foodId) =>
         set((s) => {
           const log = s.logs[date];
           if (!log) return s;
-          return {
-            logs: {
-              ...s.logs,
-              [date]: {
-                ...log,
-                foods: log.foods.filter((f) => f.id !== foodId),
-              },
-            },
-          };
+          return { logs: { ...s.logs, [date]: { ...log, foods: log.foods.filter((f) => f.id !== foodId) } } };
         }),
       toggleSet: (date, exerciseId, setIndex) =>
         set((s) => {
@@ -183,36 +153,23 @@ export const useAppStore = create<AppState>()(
           const completedSets = { ...log.completedSets };
           if (completedSets[key]) delete completedSets[key];
           else completedSets[key] = true;
-          return {
-            logs: pruneLogs({ ...s.logs, [date]: { ...log, completedSets } }),
-          };
+          return { logs: pruneLogs({ ...s.logs, [date]: { ...log, completedSets } }) };
         }),
       setWorkoutDone: (date, done) =>
         set((s) => {
           const log = s.logs[date] ?? emptyLog(date);
-          return {
-            logs: pruneLogs({
-              ...s.logs,
-              [date]: { ...log, workoutDone: done },
-            }),
-          };
+          return { logs: pruneLogs({ ...s.logs, [date]: { ...log, workoutDone: done } }) };
         }),
       logBodyWeight: (date, kg) =>
         set((s) => {
           const log = s.logs[date] ?? emptyLog(date);
           return {
-            logs: pruneLogs({
-              ...s.logs,
-              [date]: { ...log, bodyWeightKg: kg },
-            }),
+            logs: pruneLogs({ ...s.logs, [date]: { ...log, bodyWeightKg: kg } }),
             profile: { ...s.profile, weightKg: kg },
           };
         }),
       dismissInstall: () => set({ installDismissed: true }),
-      resetToday: (date) =>
-        set((s) => ({
-          logs: { ...s.logs, [date]: emptyLog(date) },
-        })),
+      resetToday: (date) => set((s) => ({ logs: { ...s.logs, [date]: emptyLog(date) } })),
       saveDayAsTemplate: (dayId, name) =>
         set((s) => {
           const day = s.plan.find((d) => d.id === dayId);
@@ -231,20 +188,12 @@ export const useAppStore = create<AppState>()(
           if (!tpl) return s;
           return {
             plan: s.plan.map((d) =>
-              d.id === dayId
-                ? {
-                    ...d,
-                    rest: false,
-                    exercises: cloneExercises(tpl.exercises),
-                  }
-                : d,
+              d.id === dayId ? { ...d, rest: false, exercises: cloneExercises(tpl.exercises) } : d,
             ),
           };
         }),
       removeTemplate: (templateId) =>
-        set((s) => ({
-          dayTemplates: s.dayTemplates.filter((t) => t.id !== templateId),
-        })),
+        set((s) => ({ dayTemplates: s.dayTemplates.filter((t) => t.id !== templateId) })),
       copyDayToDay: (fromDayId, toDayId) =>
         set((s) => {
           const from = s.plan.find((d) => d.id === fromDayId);
@@ -252,12 +201,7 @@ export const useAppStore = create<AppState>()(
           return {
             plan: s.plan.map((d) =>
               d.id === toDayId
-                ? {
-                    ...d,
-                    rest: from.rest,
-                    name: from.name,
-                    exercises: cloneExercises(from.exercises),
-                  }
+                ? { ...d, rest: from.rest, name: from.name, exercises: cloneExercises(from.exercises) }
                 : d,
             ),
           };
@@ -280,27 +224,42 @@ export const useAppStore = create<AppState>()(
           profile: migrateProfile(data.profile),
           plan: Array.isArray(data.plan) ? data.plan : s.plan,
           logs: data.logs && typeof data.logs === "object" ? data.logs : s.logs,
-          dayTemplates: Array.isArray(data.dayTemplates)
-            ? data.dayTemplates
-            : s.dayTemplates,
+          dayTemplates: Array.isArray(data.dayTemplates) ? data.dayTemplates : s.dayTemplates,
           deepseekKey:
-            opts?.includeKey && typeof data.deepseekKey === "string"
-              ? data.deepseekKey
-              : s.deepseekKey,
+            opts?.includeKey && typeof data.deepseekKey === "string" ? data.deepseekKey : s.deepseekKey,
         }));
       },
+      saveNamedBackup: (name) => {
+        const data = get().exportBackup();
+        const entry: SavedBackup = {
+          id: uid("bak"),
+          name: name.trim() || `Stand ${new Date().toLocaleString("de-DE")}`,
+          createdAt: Date.now(),
+          data,
+        };
+        set((s) => ({ savedBackups: [entry, ...s.savedBackups].slice(0, 30) }));
+      },
+      restoreNamedBackup: (id) => {
+        const bak = get().savedBackups.find((b) => b.id === id);
+        if (!bak) return;
+        get().importBackup(bak.data);
+      },
+      removeNamedBackup: (id) =>
+        set((s) => ({ savedBackups: s.savedBackups.filter((b) => b.id !== id) })),
+      renameNamedBackup: (id, name) =>
+        set((s) => ({
+          savedBackups: s.savedBackups.map((b) => (b.id === id ? { ...b, name } : b)),
+        })),
     }),
     {
       name: "nox-app-v1",
-      storage:
-        typeof window === "undefined"
-          ? undefined
-          : createJSONStorage(() => localStorage),
+      storage: typeof window === "undefined" ? undefined : createJSONStorage(() => localStorage),
       partialize: (s) => ({
         profile: s.profile,
         plan: s.plan,
         logs: s.logs,
         dayTemplates: s.dayTemplates,
+        savedBackups: s.savedBackups,
         installDismissed: true,
         deepseekKey: s.deepseekKey,
       }),
@@ -311,6 +270,7 @@ export const useAppStore = create<AppState>()(
           ...p,
           profile: migrateProfile(p.profile),
           dayTemplates: Array.isArray(p.dayTemplates) ? p.dayTemplates : [],
+          savedBackups: Array.isArray(p.savedBackups) ? p.savedBackups : [],
           installDismissed: true,
           deepseekKey: typeof p.deepseekKey === "string" ? p.deepseekKey : "",
         };
