@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { analyzeFoodWithDeepSeek } from "@/lib/food-ai";
+import { analyzeFoodWithAI } from "@/lib/food-ai";
 import { QUICK_FOODS } from "@/lib/food-db";
 import { foodByName, parseFoodText, portionOf, searchFoods } from "@/lib/food-parser";
 import { analyzeFoodLocally, analyzeFoodPhoto, type PhotoInsight } from "@/lib/local-ai";
@@ -101,7 +101,7 @@ export function FoodView({ date }: Props) {
 
       if (!items.length && hasKey) {
         try {
-          items = await analyzeFoodWithDeepSeek(value, deepseekKey);
+          items = await analyzeFoodWithAI(value, deepseekKey);
           source = "ai";
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Erkennung fehlgeschlagen";
@@ -114,7 +114,7 @@ export function FoodView({ date }: Props) {
         toast.error(
           hasKey
             ? "Nichts erkannt. Formuliere anders oder trag manuell ein."
-            : "Nichts in der Liste. Unter Werte einen DeepSeek-Key hinterlegen oder manuell eintragen.",
+            : "Nichts in der Liste. Unter Werte einen OpenAI- oder DeepSeek-Key hinterlegen oder manuell eintragen.",
         );
         return;
       }
@@ -177,8 +177,8 @@ export function FoodView({ date }: Props) {
         </div>
         <p className="mt-2 text-xs leading-relaxed text-muted">
           {hasKey
-            ? "Zuerst lokale Liste, sonst Online-Erkennung. Mengen wie „200 g“ funktionieren."
-            : "Lokale Liste. Für freiere Texte: unter Werte einen DeepSeek-Key eintragen."}
+            ? "Zuerst lokale Liste, sonst Online-Erkennung (OpenAI/DeepSeek). Mengen wie „200 g“ funktionieren."
+            : "Lokale Liste. Für freiere Texte: unter Werte einen OpenAI- oder DeepSeek-Key eintragen."}
         </p>
       </section>
 
