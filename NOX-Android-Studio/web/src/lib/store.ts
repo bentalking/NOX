@@ -42,6 +42,7 @@ type AppState = {
   saveDayAsTemplate: (dayId: string, name?: string) => void;
   applyTemplateToDay: (templateId: string, dayId: string) => void;
   removeTemplate: (templateId: string) => void;
+  copyDayToDay: (fromDayId: string, toDayId: string) => void;
   exportBackup: () => NoxBackup;
   importBackup: (data: NoxBackup, opts?: { includeKey?: boolean }) => void;
 };
@@ -244,6 +245,23 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           dayTemplates: s.dayTemplates.filter((t) => t.id !== templateId),
         })),
+      copyDayToDay: (fromDayId, toDayId) =>
+        set((s) => {
+          const from = s.plan.find((d) => d.id === fromDayId);
+          if (!from) return s;
+          return {
+            plan: s.plan.map((d) =>
+              d.id === toDayId
+                ? {
+                    ...d,
+                    rest: from.rest,
+                    name: from.name,
+                    exercises: cloneExercises(from.exercises),
+                  }
+                : d,
+            ),
+          };
+        }),
       exportBackup: () => {
         const s = get();
         return {
