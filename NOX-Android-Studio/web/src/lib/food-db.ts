@@ -50,6 +50,23 @@ export const FOOD_DB: FoodItem[] = [
   { name: "Red Bull", aliases: ["redbull", "energy drink"], kcal: 45, protein: 0, carbs: 11, fat: 0, pieceGrams: 250 },
   { name: "Monster Energy", aliases: ["monster"], kcal: 48, protein: 0, carbs: 12, fat: 0, pieceGrams: 500 },
   { name: "Coca-Cola", aliases: ["cola", "coke", "coca cola"], kcal: 42, protein: 0, carbs: 10.6, fat: 0, pieceGrams: 330 },
+  { name: "Sucuk", aliases: ["sucuk", "sujuk", "soudjouk", "sucuk wurst", "türkische wurst"], kcal: 330, protein: 14, carbs: 2, fat: 30, pieceGrams: 50 },
+  { name: "Cevapcici", aliases: ["cevapcici", "cevapi", "cevap"], kcal: 250, protein: 18, carbs: 2, fat: 19, pieceGrams: 30 },
+  { name: "Burek", aliases: ["burek", "börek"], kcal: 300, protein: 10, carbs: 28, fat: 18, pieceGrams: 120 },
+  { name: "Ajvar", aliases: ["ajvar"], kcal: 90, protein: 1.5, carbs: 10, fat: 5 },
+  { name: "Halloumi", aliases: ["halloumi", "hellim"], kcal: 320, protein: 22, carbs: 2, fat: 25, pieceGrams: 50 },
+  { name: "Hummus", aliases: ["hummus"], kcal: 166, protein: 8, carbs: 14, fat: 10 },
+  { name: "Lahmacun", aliases: ["lahmacun"], kcal: 220, protein: 10, carbs: 28, fat: 8, pieceGrams: 100 },
+  { name: "Shawarma", aliases: ["shawarma", "schawarma"], kcal: 220, protein: 16, carbs: 12, fat: 12 },
+  { name: "Kimchi", aliases: ["kimchi"], kcal: 15, protein: 1, carbs: 2, fat: 0.5 },
+  { name: "Gyoza", aliases: ["gyoza", "dumplings"], kcal: 200, protein: 8, carbs: 22, fat: 9, pieceGrams: 20 },
+  { name: "Pad Thai", aliases: ["pad thai"], kcal: 160, protein: 7, carbs: 22, fat: 5 },
+  { name: "Naan", aliases: ["naan"], kcal: 290, protein: 9, carbs: 50, fat: 6, pieceGrams: 90 },
+  { name: "Jollof Rice", aliases: ["jollof"], kcal: 150, protein: 4, carbs: 28, fat: 3 },
+  { name: "Empanada", aliases: ["empanada"], kcal: 260, protein: 8, carbs: 25, fat: 14, pieceGrams: 80 },
+  { name: "Pelmeni", aliases: ["pelmeni"], kcal: 220, protein: 12, carbs: 25, fat: 8, pieceGrams: 15 },
+  { name: "Leberkäse", aliases: ["leberkaese", "fleischkäse"], kcal: 280, protein: 14, carbs: 2, fat: 24, pieceGrams: 80 },
+  { name: "Mett", aliases: ["mett", "hackepeter"], kcal: 290, protein: 18, carbs: 0, fat: 24 },
 ];
 
 export const FOOD_DB_COUNT = FOOD_DB.length;
