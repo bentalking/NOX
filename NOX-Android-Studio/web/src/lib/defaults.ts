@@ -13,18 +13,47 @@ export const DEFAULT_PROFILE: Profile = {
   carbGoal: 250,
   fatGoal: 70,
   accent: "blue",
+  theme: "dark",
 };
 
 export const ACCENT_PRESETS: Record<
   Profile["accent"],
-  { primary: string; primaryFg: string; label: string }
+  { primary: string; primaryFg: string; label: string; glow: string }
 > = {
-  blue: { primary: "#3d8bfd", primaryFg: "#061018", label: "Blau" },
-  white: { primary: "#e8eef8", primaryFg: "#0a0e16", label: "Weiß" },
-  purple: { primary: "#a78bfa", primaryFg: "#12081f", label: "Lila" },
-  teal: { primary: "#2dd4bf", primaryFg: "#04201c", label: "Petrol" },
-  orange: { primary: "#fb923c", primaryFg: "#1a0c04", label: "Orange" },
+  blue: { primary: "#3d8bfd", primaryFg: "#061018", label: "Blau", glow: "#132038" },
+  white: { primary: "#e8eef8", primaryFg: "#0a0e16", label: "Weiß", glow: "#1a2030" },
+  purple: { primary: "#a78bfa", primaryFg: "#12081f", label: "Lila", glow: "#1a1230" },
+  teal: { primary: "#2dd4bf", primaryFg: "#04201c", label: "Petrol", glow: "#0a2420" },
+  orange: { primary: "#fb923c", primaryFg: "#1a0c04", label: "Orange", glow: "#2a1808" },
+  rose: { primary: "#fb7185", primaryFg: "#1a0810", label: "Rosa", glow: "#2a1018" },
+  lime: { primary: "#a3e635", primaryFg: "#0c1404", label: "Lime", glow: "#18240c" },
+  cyan: { primary: "#22d3ee", primaryFg: "#041418", label: "Cyan", glow: "#0c2028" },
 };
+
+export const THEME_PRESETS = {
+  dark: {
+    bg: "#07090f",
+    surface: "#0e1422",
+    surface2: "#151d30",
+    fg: "#e8eef8",
+    muted: "#8b97ad",
+    subtle: "#5c6b84",
+    border: "#1e2a40",
+    shadow: "0 0 0 1px rgb(255 255 255 / 0.07)",
+    shadowHover: "0 0 0 1px rgb(255 255 255 / 0.13)",
+  },
+  light: {
+    bg: "#f4f6fb",
+    surface: "#ffffff",
+    surface2: "#e8ecf4",
+    fg: "#0c1220",
+    muted: "#5c6b84",
+    subtle: "#8b97ad",
+    border: "#d0d7e4",
+    shadow: "0 0 0 1px rgb(0 0 0 / 0.06)",
+    shadowHover: "0 0 0 1px rgb(0 0 0 / 0.1)",
+  },
+} as const;
 
 function ex(
   id: string,
@@ -133,13 +162,17 @@ const GOAL_DELTA: Record<Profile["goal"], number> = {
   bulk: 300,
 };
 
-export function calcTdee(profile: Profile): number {
-  const bmr =
+export function calcBmr(profile: Profile): number {
+  return (
     10 * profile.weightKg +
     6.25 * profile.heightCm -
     5 * profile.age +
-    (profile.sex === "male" ? 5 : -161);
-  return Math.round(bmr * ACTIVITY_FACTOR[profile.activity]);
+    (profile.sex === "male" ? 5 : -161)
+  );
+}
+
+export function calcTdee(profile: Profile): number {
+  return Math.round(calcBmr(profile) * ACTIVITY_FACTOR[profile.activity]);
 }
 
 export function suggestedGoals(profile: Profile): {
@@ -150,7 +183,7 @@ export function suggestedGoals(profile: Profile): {
 } {
   const tdee = calcTdee(profile);
   const calorieGoal = Math.max(1400, tdee + GOAL_DELTA[profile.goal]);
-  const proteinGoal = Math.round(profile.weightKg * 2);
+  const proteinGoal = Math.round(profile.weightKg * 2 * 10) / 10;
   const fatGoal = Math.round((calorieGoal * 0.25) / 9);
   const carbGoal = Math.max(
     80,
