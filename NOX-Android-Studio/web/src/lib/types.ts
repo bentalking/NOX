@@ -102,3 +102,11 @@ export type NoxBackup = {
   dayTemplates: DayTemplate[];
   deepseekKey?: string;
 };
+
+/** Named snapshot stored in-app for one-tap restore */
+export type SavedBackup = {
+  id: string;
+  name: string;
+  createdAt: number;
+  data: NoxBackup;
+};
