@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,16 @@ const ACCENTS = (Object.keys(ACCENT_PRESETS) as AccentColor[]).map((id) => ({
   color: ACCENT_PRESETS[id].primary,
 }));
 
+function formatBackupDate(ts: number) {
+  return new Date(ts).toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function StatsView({ date }: Props) {
   const profile = useAppStore((s) => s.profile);
   const deepseekKey = useAppStore((s) => s.deepseekKey);
@@ -37,12 +47,15 @@ export function StatsView({ date }: Props) {
   const updateProfile = useAppStore((s) => s.updateProfile);
   const logBodyWeight = useAppStore((s) => s.logBodyWeight);
   const resetToday = useAppStore((s) => s.resetToday);
-  const exportBackup = useAppStore((s) => s.exportBackup);
-  const importBackup = useAppStore((s) => s.importBackup);
+  const savedBackups = useAppStore((s) => s.savedBackups);
+  const saveNamedBackup = useAppStore((s) => s.saveNamedBackup);
+  const restoreNamedBackup = useAppStore((s) => s.restoreNamedBackup);
+  const removeNamedBackup = useAppStore((s) => s.removeNamedBackup);
   const logs = useAppStore((s) => s.logs);
   const [weight, setWeight] = useState(String(profile.weightKg));
   const [keyDraft, setKeyDraft] = useState(deepseekKey);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [backupName, setBackupName] = useState("");
+  const [selectedId, setSelectedId] = useState("");
 
   const tdee = calcTdee(profile);
   const suggested = suggestedGoals(profile);
@@ -53,50 +66,30 @@ export function StatsView({ date }: Props) {
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 8);
 
-  function doExport() {
-    try {
-      const data = exportBackup();
-      const json = JSON.stringify(data, null, 2);
-      const filename = `nox-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      const dataUrl =
-        "data:application/json;charset=utf-8," + encodeURIComponent(json);
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = filename;
-      a.style.display = "none";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      if (navigator.clipboard?.writeText) {
-        void navigator.clipboard.writeText(json).then(
-          () => toast.success("Backup exportiert (auch in Zwischenablage)"),
-          () => toast.success("Backup exportiert"),
-        );
-      } else {
-        toast.success("Backup exportiert – siehe Downloads");
-      }
-    } catch {
-      toast.error("Export fehlgeschlagen");
-    }
+  const selected = savedBackups.find((b) => b.id === selectedId) ?? null;
+
+  function doSave() {
+    const name = backupName.trim() || `Stand ${formatBackupDate(Date.now())}`;
+    saveNamedBackup(name);
+    setBackupName("");
+    toast.success(`Gespeichert: ${name}`);
   }
 
-  async function doImport(file: File) {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (!data || data.version !== 1) {
-        toast.error("Ungültige Backup-Datei");
-        return;
-      }
-      if (!data.profile || !Array.isArray(data.plan)) {
-        toast.error("Backup unvollständig");
-        return;
-      }
-      importBackup(data, { includeKey: false });
-      toast.success("Backup importiert");
-    } catch {
-      toast.error("Import fehlgeschlagen – JSON prüfen");
+  function doRestore() {
+    if (!selectedId) {
+      toast.error("Bitte ein Backup auswählen");
+      return;
     }
+    restoreNamedBackup(selectedId);
+    toast.success(selected ? `Wiederhergestellt: ${selected.name}` : "Wiederhergestellt");
+  }
+
+  function doDelete() {
+    if (!selectedId) return;
+    const name = selected?.name ?? "Backup";
+    removeNamedBackup(selectedId);
+    setSelectedId("");
+    toast.success(`Gelöscht: ${name}`);
   }
 
   return (
@@ -108,7 +101,6 @@ export function StatsView({ date }: Props) {
 
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
         <h2 className="font-heading text-base font-semibold">Erscheinung</h2>
-        <p className="mt-1 text-xs text-muted">Dark / Light und Akzentfarbe.</p>
         <div className="mt-3 grid grid-cols-2 gap-1 rounded-md bg-surface-2 p-1">
           {(["dark", "light"] as ThemeMode[]).map((t) => (
             <button
@@ -135,10 +127,7 @@ export function StatsView({ date }: Props) {
                   active ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
                 }`}
               >
-                <span
-                  className="size-3.5 rounded-full ring-1 ring-white/20"
-                  style={{ background: a.color }}
-                />
+                <span className="size-3.5 rounded-full ring-1 ring-white/20" style={{ background: a.color }} />
                 {a.label}
               </button>
             );
@@ -156,47 +145,23 @@ export function StatsView({ date }: Props) {
             <Segment
               label="Geschlecht"
               value={profile.sex}
-              options={[
-                { id: "male", label: "Mann" },
-                { id: "female", label: "Frau" },
-              ]}
+              options={[{ id: "male", label: "Mann" }, { id: "female", label: "Frau" }]}
               onChange={(sex) => updateProfile({ sex: sex as Sex })}
             />
             <Field label="Alter">
-              <Input
-                type="number"
-                min={14}
-                max={90}
-                value={profile.age}
-                onChange={(e) => updateProfile({ age: Number(e.target.value) || profile.age })}
-              />
+              <Input type="number" min={14} max={90} value={profile.age}
+                onChange={(e) => updateProfile({ age: Number(e.target.value) || profile.age })} />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Größe cm">
-              <Input
-                type="number"
-                min={120}
-                max={230}
-                value={profile.heightCm}
-                onChange={(e) =>
-                  updateProfile({ heightCm: Number(e.target.value) || profile.heightCm })
-                }
-              />
+              <Input type="number" min={120} max={230} value={profile.heightCm}
+                onChange={(e) => updateProfile({ heightCm: Number(e.target.value) || profile.heightCm })} />
             </Field>
             <Field label="Gewicht kg">
-              <Input
-                type="number"
-                min={40}
-                max={250}
-                step={0.1}
-                value={weight}
+              <Input type="number" min={40} max={250} step={0.1} value={weight}
                 onChange={(e) => setWeight(e.target.value)}
-                onBlur={() => {
-                  const kg = Number(weight);
-                  if (kg > 0) logBodyWeight(date, kg);
-                }}
-              />
+                onBlur={() => { const kg = Number(weight); if (kg > 0) logBodyWeight(date, kg); }} />
             </Field>
           </div>
         </div>
@@ -204,41 +169,15 @@ export function StatsView({ date }: Props) {
 
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
         <h2 className="font-heading text-base font-semibold">Essen-Erkennung</h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted">
-          Optionaler API-Key nur für Foto-Vision. Alltag läuft offline ohne Key.
-        </p>
+        <p className="mt-1 text-xs leading-relaxed text-muted">Optionaler API-Key nur für Foto. Alltag offline.</p>
         <div className="mt-3 flex flex-col gap-2">
           <Field label="OpenAI / DeepSeek Key">
-            <Input
-              type="password"
-              autoComplete="off"
-              placeholder="sk-…"
-              value={keyDraft}
-              onChange={(e) => setKeyDraft(e.target.value)}
-            />
+            <Input type="password" autoComplete="off" placeholder="sk-…" value={keyDraft}
+              onChange={(e) => setKeyDraft(e.target.value)} />
           </Field>
           <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setDeepseekKey(keyDraft.trim());
-                toast.success(keyDraft.trim() ? "Key gespeichert." : "Key entfernt.");
-              }}
-            >
-              Speichern
-            </Button>
-            {deepseekKey ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setKeyDraft("");
-                  setDeepseekKey("");
-                  toast.success("Key gelöscht.");
-                }}
-              >
-                Löschen
-              </Button>
-            ) : null}
+            <Button variant="secondary" onClick={() => { setDeepseekKey(keyDraft.trim()); toast.success(keyDraft.trim() ? "Key gespeichert." : "Key entfernt."); }}>Speichern</Button>
+            {deepseekKey ? (<Button variant="ghost" onClick={() => { setKeyDraft(""); setDeepseekKey(""); toast.success("Key gelöscht."); }}>Löschen</Button>) : null}
           </div>
         </div>
       </section>
@@ -247,55 +186,15 @@ export function StatsView({ date }: Props) {
         <h2 className="font-heading text-base font-semibold">Tagesziele</h2>
         <p className="mt-1 text-xs text-muted">Grundumsatz + Alltag ≈ {fmt(tdee)} kcal.</p>
         <div className="mt-3 flex flex-col gap-3">
-          <ChipRow
-            value={profile.activity}
-            options={ACTIVITY}
-            onChange={(activity) => updateProfile({ activity: activity as ActivityLevel })}
-          />
-          <ChipRow
-            value={profile.goal}
-            options={GOALS}
-            onChange={(goal) => updateProfile({ goal: goal as Goal })}
-          />
+          <ChipRow value={profile.activity} options={ACTIVITY} onChange={(activity) => updateProfile({ activity: activity as ActivityLevel })} />
+          <ChipRow value={profile.goal} options={GOALS} onChange={(goal) => updateProfile({ goal: goal as Goal })} />
           <div className="grid grid-cols-2 gap-2">
-            <Field label="kcal">
-              <Input
-                type="number"
-                value={profile.calorieGoal}
-                onChange={(e) => updateProfile({ calorieGoal: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <Field label="Protein g">
-              <Input
-                type="number"
-                value={profile.proteinGoal}
-                onChange={(e) => updateProfile({ proteinGoal: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <Field label="Kohlenhydrate g">
-              <Input
-                type="number"
-                value={profile.carbGoal}
-                onChange={(e) => updateProfile({ carbGoal: Number(e.target.value) || 0 })}
-              />
-            </Field>
-            <Field label="Fett g">
-              <Input
-                type="number"
-                value={profile.fatGoal}
-                onChange={(e) => updateProfile({ fatGoal: Number(e.target.value) || 0 })}
-              />
-            </Field>
+            <Field label="kcal"><Input type="number" value={profile.calorieGoal} onChange={(e) => updateProfile({ calorieGoal: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Protein g"><Input type="number" value={profile.proteinGoal} onChange={(e) => updateProfile({ proteinGoal: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Kohlenhydrate g"><Input type="number" value={profile.carbGoal} onChange={(e) => updateProfile({ carbGoal: Number(e.target.value) || 0 })} /></Field>
+            <Field label="Fett g"><Input type="number" value={profile.fatGoal} onChange={(e) => updateProfile({ fatGoal: Number(e.target.value) || 0 })} /></Field>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              updateProfile(suggested);
-              toast.success("Ziele aus deinen Stats berechnet.");
-            }}
-          >
-            Aus Stats berechnen
-          </Button>
+          <Button variant="secondary" onClick={() => { updateProfile(suggested); toast.success("Ziele berechnet."); }}>Aus Stats berechnen</Button>
         </div>
       </section>
 
@@ -305,12 +204,7 @@ export function StatsView({ date }: Props) {
           <ul className="mt-3 flex flex-col gap-2">
             {history.map((h) => (
               <li key={h.date} className="flex justify-between text-sm tabular-nums text-muted">
-                <span>
-                  {new Date(h.date + "T12:00:00").toLocaleDateString("de-DE", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
+                <span>{new Date(h.date + "T12:00:00").toLocaleDateString("de-DE", { day: "numeric", month: "short" })}</span>
                 <span className="text-fg">{fmt(h.bodyWeightKg ?? 0, 1)} kg</span>
               </li>
             ))}
@@ -319,108 +213,72 @@ export function StatsView({ date }: Props) {
       ) : null}
 
       <section className="rounded-xl bg-surface p-4 shadow-[var(--shadow-border)]">
-        <h2 className="font-heading text-base font-semibold">Backup</h2>
+        <h2 className="font-heading text-base font-semibold">Backups</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted">
-          Plan, Vorlagen, Logs und Profil. Export landet in Downloads und in der
-          Zwischenablage. Import: JSON-Datei wählen.
+          Name vergeben, speichern, später aus der Liste wiederherstellen – alles in der App, kein Dateisystem-Suchspiel.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={doExport}>
-            Exportieren
-          </Button>
-          <Button variant="ghost" onClick={() => fileRef.current?.click()}>
-            Importieren
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json,text/plain"
-            className="sr-only"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.currentTarget.value = "";
-              if (f) void doImport(f);
-            }}
-          />
+        <div className="mt-3 flex flex-col gap-2">
+          <Field label="Name für neues Backup">
+            <Input value={backupName} onChange={(e) => setBackupName(e.target.value)} placeholder="z.B. Vor Diät, Stand Montag…" />
+          </Field>
+          <Button onClick={doSave}>Speichern</Button>
         </div>
-        <Button
-          className="mt-3"
-          variant="danger"
-          onClick={() => {
-            resetToday(date);
-            toast.success("Heutiges Log geleert.");
-          }}
-        >
-          Heute zurücksetzen
-        </Button>
+        <div className="mt-4">
+          <Label>Gespeicherte Backups</Label>
+          {savedBackups.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">Noch keine Backups.</p>
+          ) : (
+            <div className="mt-2 flex flex-col gap-2">
+              <select
+                className="h-11 w-full rounded-md border-0 bg-surface-2 px-3 text-sm text-fg outline-none ring-1 ring-border"
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+              >
+                <option value="">— auswählen —</option>
+                {savedBackups.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name} · {formatBackupDate(b.createdAt)}</option>
+                ))}
+              </select>
+              {selected ? (
+                <p className="text-xs text-muted">{selected.name} · {formatBackupDate(selected.createdAt)} · Plan + Logs + Vorlagen</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={doRestore} disabled={!selectedId}>Wiederherstellen</Button>
+                <Button variant="ghost" onClick={doDelete} disabled={!selectedId}>Löschen</Button>
+              </div>
+            </div>
+          )}
+        </div>
+        <Button className="mt-4" variant="danger" onClick={() => { resetToday(date); toast.success("Heutiges Log geleert."); }}>Heute zurücksetzen</Button>
       </section>
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
-      {children}
-    </label>
-  );
+  return (<label className="flex flex-col gap-1.5"><Label>{label}</Label>{children}</label>);
 }
 
-function Segment({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: { id: string; label: string }[];
-  onChange: (id: string) => void;
-}) {
+function Segment({ label, value, options, onChange }: { label: string; value: string; options: { id: string; label: string }[]; onChange: (id: string) => void }) {
   return (
     <div>
       <Label>{label}</Label>
       <div className="mt-1.5 grid grid-cols-2 gap-1 rounded-md bg-surface-2 p-1">
         {options.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => onChange(o.id)}
-            className={`h-9 rounded-sm text-sm font-medium ${
-              value === o.id ? "bg-primary text-primary-fg" : "text-muted"
-            }`}
-          >
-            {o.label}
-          </button>
+          <button key={o.id} type="button" onClick={() => onChange(o.id)}
+            className={`h-9 rounded-sm text-sm font-medium ${value === o.id ? "bg-primary text-primary-fg" : "text-muted"}`}>{o.label}</button>
         ))}
       </div>
     </div>
   );
 }
 
-function ChipRow({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: { id: string; label: string }[];
-  onChange: (id: string) => void;
-}) {
+function ChipRow({ value, options, onChange }: { value: string; options: { id: string; label: string }[]; onChange: (id: string) => void }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          onClick={() => onChange(o.id)}
-          className={`h-9 rounded-full px-3 text-xs font-medium ${
-            value === o.id ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"
-          }`}
-        >
-          {o.label}
-        </button>
+        <button key={o.id} type="button" onClick={() => onChange(o.id)}
+          className={`h-9 rounded-full px-3 text-xs font-medium ${value === o.id ? "bg-primary text-primary-fg" : "bg-surface-2 text-muted"}`}>{o.label}</button>
       ))}
     </div>
   );
