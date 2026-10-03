@@ -37,11 +37,31 @@ function macrosFor(item: FoodItem, grams: number): ParsedFood {
   };
 }
 
+const PORTION_WORDS: Record<string, number> = {
+  teller: 300,
+  portion: 250,
+  handvoll: 30,
+  scheibe: 40,
+  scheiben: 40,
+  glas: 200,
+  becher: 150,
+  schale: 150,
+  schussel: 250,
+  schuessel: 250,
+  kugel: 50,
+  el: 15,
+  essloeffel: 15,
+  tl: 5,
+  teeloeffel: 5,
+  packung: 200,
+  dose: 150,
+};
+
 type Qty = { grams?: number; pieces?: number; ml?: number };
 
 function parseQty(raw: string): { qty: Qty; rest: string } {
   const text = fold(raw);
-  const kg = text.match(/(\d+(?:[.,]\d+)?)\s*kg/);
+  const kg = text.match(/(\d+(?:[.,]\d+)?)\s*kg\b/);
   if (kg) {
     const n = Number(kg[1].replace(",", "."));
     return { qty: { grams: n * 1000 }, rest: text.replace(kg[0], " ") };
@@ -51,18 +71,41 @@ function parseQty(raw: string): { qty: Qty; rest: string } {
     const n = Number(g[1].replace(",", "."));
     return { qty: { grams: n }, rest: text.replace(g[0], " ") };
   }
-  const ml = text.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|l)\b/);
+  const ml = text.match(/(\d+(?:[.,]\d+)?)\s*(?:ml)\b/);
   if (ml) {
     const n = Number(ml[1].replace(",", "."));
-    const grams = ml[0].includes("l") && !ml[0].includes("ml") ? n * 1000 : n;
-    return { qty: { ml: grams, grams }, rest: text.replace(ml[0], " ") };
+    return { qty: { ml: n, grams: n }, rest: text.replace(ml[0], " ") };
+  }
+  const liter = text.match(/(\d+(?:[.,]\d+)?)\s*l\b/);
+  if (liter) {
+    const n = Number(liter[1].replace(",", "."));
+    return { qty: { ml: n * 1000, grams: n * 1000 }, rest: text.replace(liter[0], " ") };
+  }
+  const el = text.match(/(\d+(?:[.,]\d+)?)\s*(?:el|essloeffel)\b/);
+  if (el) {
+    const n = Number(el[1].replace(",", "."));
+    return { qty: { grams: n * 15 }, rest: text.replace(el[0], " ") };
+  }
+  const tl = text.match(/(\d+(?:[.,]\d+)?)\s*(?:tl|teeloeffel)\b/);
+  if (tl) {
+    const n = Number(tl[1].replace(",", "."));
+    return { qty: { grams: n * 5 }, rest: text.replace(tl[0], " ") };
+  }
+  for (const [word, grams] of Object.entries(PORTION_WORDS)) {
+    if (["el", "essloeffel", "tl", "teeloeffel"].includes(word)) continue;
+    const re = new RegExp(`(\\d+(?:[.,]\\d+)?)?\\s*${word}\\b`);
+    const m = text.match(re);
+    if (m) {
+      const mult = m[1] ? Number(m[1].replace(",", ".")) : 1;
+      return { qty: { grams: mult * grams }, rest: text.replace(m[0], " ") };
+    }
   }
   const piece = text.match(
-    /(\d+(?:[.,]\d+)?)\s*(?:x|stk|stueck|stück|st\.?|scheiben)?\b/,
+    /(\d+(?:[.,]\d+)?)\s*(?:x|stk|stueck|stück|st\.?|scheiben|scheibe)?\b/,
   );
   if (piece) {
     const n = Number(piece[1].replace(",", "."));
-    if (n > 0 && n <= 30) {
+    if (n > 0 && n <= 40) {
       return { qty: { pieces: n }, rest: text.replace(piece[0], " ") };
     }
   }
@@ -75,9 +118,18 @@ function scoreItem(query: string, item: FoodItem): number {
   const names = [item.name, ...item.aliases].map(fold).filter(Boolean);
   let best = 0;
   for (const n of names) {
-    if (q === n) best = Math.max(best, 100 + n.length);
-    else if (q.includes(n)) best = Math.max(best, 80 + n.length);
-    else if (n.includes(q) && q.length >= 3) best = Math.max(best, 50 + q.length);
+    if (q === n) best = Math.max(best, 120 + n.length);
+    else if (q.includes(n) && n.length >= 3) best = Math.max(best, 90 + n.length);
+    else if (n.includes(q) && q.length >= 3) best = Math.max(best, 55 + q.length);
+    else {
+      const qTokens = q.split(" ").filter((t) => t.length > 2);
+      const nTokens = n.split(" ");
+      let hit = 0;
+      for (const qt of qTokens) {
+        if (nTokens.some((nt) => nt === qt || nt.startsWith(qt) || qt.startsWith(nt))) hit++;
+      }
+      if (hit > 0) best = Math.max(best, 40 + hit * 15);
+    }
   }
   return best;
 }
@@ -92,7 +144,7 @@ function findItem(query: string): FoodItem | null {
       best = item;
     }
   }
-  return bestScore >= 50 ? best : null;
+  return bestScore >= 45 ? best : null;
 }
 
 function parseSegment(segment: string): ParsedFood | null {
@@ -102,7 +154,7 @@ function parseSegment(segment: string): ParsedFood | null {
   let grams = 100;
   if (qty.grams && qty.grams > 0) grams = qty.grams;
   else if (qty.pieces && item.pieceGrams) grams = qty.pieces * item.pieceGrams;
-  else if (qty.pieces) grams = qty.pieces * 100;
+  else if (qty.pieces) grams = qty.pieces * (item.pieceGrams ?? 100);
   else if (item.pieceGrams && !/\d/.test(segment)) grams = item.pieceGrams;
   return macrosFor(item, grams);
 }
@@ -111,13 +163,20 @@ export function parseFoodText(text: string): ParsedFood[] {
   const cleaned = text.trim();
   if (!cleaned) return [];
   const parts = cleaned
-    .split(/\s*(?:,|;|\+|\bund\b|\bmit\b|\bnachher\b|\bdann\b)\s*/i)
+    .split(/\s*(?:,|;|\+|\/|\bund\b|\bmit\b|\bplus\b|\bdazu\b|\bnachher\b|\bdann\b|\bsowie\b)\s*/i)
     .map((p) => p.trim())
     .filter((p) => p.length > 1);
   const out: ParsedFood[] = [];
+  const seen = new Set<string>();
   for (const part of parts.length ? parts : [cleaned]) {
     const parsed = parseSegment(part);
-    if (parsed) out.push(parsed);
+    if (parsed) {
+      const key = `${parsed.name}-${parsed.grams}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(parsed);
+      }
+    }
   }
   if (out.length === 0) {
     const whole = parseSegment(cleaned);
@@ -126,7 +185,7 @@ export function parseFoodText(text: string): ParsedFood[] {
   return out;
 }
 
-export function searchFoods(query: string, limit = 8): FoodItem[] {
+export function searchFoods(query: string, limit = 10): FoodItem[] {
   const q = fold(query);
   if (q.length < 1) return FOOD_DB.slice(0, limit);
   return FOOD_DB.map((item) => ({ item, score: scoreItem(q, item) }))
